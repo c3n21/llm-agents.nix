@@ -39,6 +39,16 @@ Nix packages for AI coding agents and development tools. Automatically updated d
 
 </details>
 <details>
+<summary><strong>antigravity-ide</strong> - Agentic development platform, evolving the IDE into the agent-first era</summary>
+
+- **Source**: binary
+- **License**: unfree
+- **Homepage**: https://antigravity.google/product/antigravity-ide
+- **Usage**: `nix run github:numtide/llm-agents.nix#antigravity-ide -- --help`
+- **Nix**: [packages/antigravity-ide/package.nix](packages/antigravity-ide/package.nix)
+
+</details>
+<details>
 <summary><strong>bb-app</strong> - Agentic IDE for orchestrating coding agents</summary>
 
 - **Source**: binary
@@ -641,6 +651,16 @@ Nix packages for AI coding agents and development tools. Automatically updated d
 - **Homepage**: https://github.com/iOfficeAI/AionUi
 - **Usage**: `nix run github:numtide/llm-agents.nix#aionui -- --help`
 - **Nix**: [packages/aionui/package.nix](packages/aionui/package.nix)
+
+</details>
+<details>
+<summary><strong>antigravity-hub</strong> - Desktop environment for managing multiple autonomous agents across independent projects</summary>
+
+- **Source**: binary
+- **License**: unfree
+- **Homepage**: https://antigravity.google
+- **Usage**: `nix run github:numtide/llm-agents.nix#antigravity-hub -- --help`
+- **Nix**: [packages/antigravity-hub/package.nix](packages/antigravity-hub/package.nix)
 
 </details>
 <details>

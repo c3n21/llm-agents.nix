@@ -71,7 +71,11 @@ in
     changelog = "https://antigravity.google/changelog";
     license = flake.lib.licenses.unfree;
     sourceProvenance = with sourceTypes; [ binaryNativeCode ];
-    maintainers = with maintainers; [ ];
+    maintainers = with maintainers; [
+      xiaoxiangmoe
+      Zaczero
+      schembriaiden
+    ];
     mainProgram = "antigravity-ide";
     platforms = [
       "x86_64-linux"
