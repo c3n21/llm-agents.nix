@@ -3,6 +3,7 @@
   flake,
   stdenv,
   rustPlatform,
+  pkgsStatic,
   fetchFromGitHub,
   fetchurl,
   runCommand,
@@ -15,6 +16,7 @@
   pnpmConfigHook,
   bash,
   coreutils,
+  file,
   gawk,
   git,
   gnutar,
@@ -51,6 +53,13 @@ let
     openssh
     python3
   ];
+  embedHostName =
+    if stdenv.hostPlatform.isLinux then
+      "orx-host-linux-${stdenv.hostPlatform.parsed.cpu.name}"
+    else if stdenv.hostPlatform.isDarwin then
+      "orx-host-darwin-universal"
+    else
+      throw "Unsupported platform for openresearch embedded orx-host: ${stdenv.hostPlatform.system}";
 in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "openresearch";
@@ -73,7 +82,19 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   buildInputs = [ sqlite ];
 
-  env.LIBSQLITE3_SYS_USE_PKG_CONFIG = "1";
+  env = {
+    LIBSQLITE3_SYS_USE_PKG_CONFIG = "1";
+    ORX_EMBED_HOST_DIR = runCommand "openresearch-embed-host-${finalAttrs.version}" { } ''
+      install -Dm755 ${finalAttrs.passthru.orx-host}/bin/orx-host "$out/${embedHostName}"
+    '';
+  };
+
+  # Build only the CLI binary; orx-host is built separately as a static
+  # binary and embedded via ORX_EMBED_HOST_DIR.
+  cargoBuildFlags = [
+    "-p"
+    "openresearch-cli"
+  ];
 
   # Export the CLI guide, not the agent-specific runtime skill collection.
   dontInstallAgentSkills = true;
@@ -166,17 +187,56 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   doInstallCheck = true;
   nativeInstallCheckInputs = [
+    file
     versionCheckHook
     versionCheckHomeHook
   ];
 
+  installCheckPhase = ''
+    runHook preInstallCheck
+    runHook postInstallCheck
+  '';
+
   postInstallCheck = ''
     test -f $out/share/skills/openresearch/openresearch-cli/SKILL.md
     test "$(find "$out/share/skills/openresearch" -type f | wc -l)" -eq 1
+    test ! -e $out/bin/orx-host
+
+    hostBin="${finalAttrs.passthru.orx-host}/bin/orx-host"
+    hostSize="$(wc -c < "$hostBin")"
+    test "$hostSize" -gt 0 -a "$hostSize" -le $((4 * 1024 * 1024))
+    ${lib.optionalString stdenv.hostPlatform.isLinux ''
+      file -b "$hostBin" | grep -Eq 'statically linked|static-pie linked'
+    ''}
+    hostSha="$(sha256sum "$hostBin" | cut -d' ' -f1)"
+    grep -Fqa "$hostSha" "$out/bin/.orx-wrapped"
   '';
 
   passthru = {
     category = "Workflow & Project Management";
+
+    orx-host =
+      let
+        hostRustPlatform = if stdenv.hostPlatform.isLinux then pkgsStatic.rustPlatform else rustPlatform;
+      in
+      hostRustPlatform.buildRustPackage {
+        pname = "orx-host";
+        inherit (finalAttrs) version src cargoDeps;
+
+        buildType = "host";
+        cargoBuildFlags = [
+          "-p"
+          "orx-host"
+        ];
+
+        # Upstream's `host` profile sets strip = true, which cargoBuildHook
+        # overrides in favor of stdenv's strip (-S -p); strip all symbols on
+        # Linux so the static musl binary stays well below the 4 MiB limit.
+        stripAllList = lib.optionals stdenv.hostPlatform.isLinux [ "bin" ];
+
+        # orx-host's own suite drives real processes and sshd.
+        doCheck = false;
+      };
 
     ui = stdenv.mkDerivation (uiAttrs: {
       pname = "openresearch-ui";
